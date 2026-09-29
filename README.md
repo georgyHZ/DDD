@@ -14,7 +14,7 @@ CPS/
 
 Keep the review sheet at `docs/pdf_collection_review.xlsx`. The inventory writes its CSVs to `output/inventory/`.
 
-pdfs/ is gitignored, therefore create one on your own in your project root folder
+pdfs/ and output/ are gitignored, therefore create one on your own in your project root folder
 
 ## Run the first notebook
 
