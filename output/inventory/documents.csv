@@ -1,0 +1,4 @@
+﻿document_id,file_sha256,file_name,pdf_path,file_size_bytes,page_count,extracted_char_count,pages_without_text,text_status,scan_error,publinova_url,title,doi,publication_year,publication_date,online_date,document_type,language,metadata_review_status,review_notes
+doc_8b361ecbae1548b4,8b361ecbae1548b4f3e789b1a8ab06dd7f6688f2369ea19cc2a652e68c3af01a,Animals on the leeve-checkpoint.pdf,.ipynb_checkpoints/Animals on the leeve-checkpoint.pdf,4159132,22,5084,0,extractable,,,,,,,,,,unreviewed,
+doc_1f92b33dfeccc1c9,1f92b33dfeccc1c9975f1055cdc259fde4fba70efd0599aa9070a5afa742c1a2,Business Case Vlissingen-checkpoint.pdf,.ipynb_checkpoints/Business Case Vlissingen-checkpoint.pdf,1378322,37,89974,0,extractable,,,,,,,,,,unreviewed,
+doc_4d0489e9657d8e45,4d0489e9657d8e45b31a0da24917ad8fcf018b843c4fc2dc9524a23c24acd8d2,Nannochloropsis-checkpoint.pdf,.ipynb_checkpoints/Nannochloropsis-checkpoint.pdf,4506883,15,90983,0,extractable,,,,,,,,,,unreviewed,
