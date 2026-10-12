@@ -1,0 +1,14 @@
+# Original PDF documents: kept locally to avoid sharing source files.
+pdfs/
+
+# Generated outputs: may contain extracted PDF text and intermediate results.
+output/
+
+# Downloaded language models: large binary files kept locally.
+models/
+
+# Jupyter checkpoints: automatically generated temporary notebook files.
+.ipynb_checkpoints/
+
+# macOS metadata: system-generated files unrelated to the project.
+.DS_Store
