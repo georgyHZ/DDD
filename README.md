@@ -34,7 +34,7 @@ These notebooks investigate up to 30 keyword/topic suggestions for English and D
 
 ## Evidence and decisions
 
-The saved evidence folders under `output/keywords/` use these descriptive names:
+The saved evidence folders under `output/keywords/` use these descriptive names (*CAN BE FOUND IN TEAMS CHANNEL -> SHARED -> 09_ARCHIVE -> MODEL TESTING RESULTS*):
 
 | Folder | Original run ID |
 |---|---|
