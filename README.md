@@ -49,9 +49,3 @@ Set `BASELINE_RUN_NAME = 'initial-six-paper-baseline'` in the notebooks when com
 Keep their configurations, source excerpts, suggestions, raw responses, audits, timings and review files. Notebook outputs can be inspected without rerunning the models.
 
 YAKE provided a fast baseline but returned fragments and document artefacts. Input cleaning reduced specific repetition and bibliography artefacts. EuroLLM still struggled with the requested output after a numbered-list revision. Ministral completed both examples normally, returning 20 English and 29 Dutch phrases. This supports further evaluation; it does not establish keyword accuracy or superiority over Harreman's work.
-
-## Next steps
-
-Review relevance, language and redundancy in `keyword_review.csv`, then compare quality at 10, 20 and 30 where enough suggestions exist. Fix the preparation/model configuration before held-out testing.
-
-Do not commit model weights, caches, virtual environments or temporary debugging files.
