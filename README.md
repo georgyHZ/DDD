@@ -1,91 +1,44 @@
-# PDF Collection Inventory
+# Keyword suggestion experiments
 
-This branch inventories HZ-related PDFs and checks how reliable their extracted text and metadata are. The current focus is **data understanding**; the inventory does not verify metadata, fetch Publinova records, perform OCR or generate keywords.
+These notebooks investigate up to 30 keyword/topic suggestions for English and Dutch research papers. Suggestions should match the paper's language and may express supported concepts using different wording.
 
-## Project folders
+## Notebook order
 
-```text
-CPS/
-├── notebooks/   Jupyter notebooks
-├── pdfs/        Input PDFs
-├── output/      Generated CSVs and text
-└── docs/        Manual review sheet and project notes
-```
-
-Keep the review sheet at `docs/pdf_collection_review.xlsx`. The inventory writes its CSVs to `output/inventory/`.
-
-pdfs/ and output/ are gitignored, therefore create one on your own in your project root folder
-
-## Run the first notebook
-
-1. Put PDFs in `pdfs/`. Subfolders are supported.
-2. Open `notebooks/01_collection_inventory.ipynb` in Jupyter, with `notebooks/` as the working directory.
-3. Install missing packages in the notebook kernel with `%pip install pymupdf pandas`, then restart the kernel if prompted.
-4. Choose **Run All**. Check that the printed PDF and output paths are correct and that the expected number of files was found.
-5. Inspect the overview and review queue. Open the PDFs themselves before accepting candidate metadata.
-
-| Output | What it contains |
+| Notebook | Purpose |
 |---|---|
-| `documents.csv` | One row per unique PDF, including page/text counts and fields for reviewed values. |
-| `metadata_observations.csv` | Unreviewed metadata candidates with their source and location. |
-| `document_terms.csv` | Individual terms; currently only embedded PDF keywords are extracted automatically. |
+| `10_keyword_topic_suggestions_yake_baseline.ipynb` | Initial YAKE baseline on six development papers. |
+| `11_keyword_topic_suggestions_input_revision.ipynb` | Revised cleaning and source selection; initial EuroLLM checks. |
+| `12_keyword_topic_suggestions_eurollm_numbered_output.ipynb` | Simpler output format and parsing diagnostics for EuroLLM. |
+| `13_keyword_topic_suggestions_ministral3_comparison.ipynb` | Ministral 3 3B in 4-bit precision on the same two development excerpts. |
 
-`document_id` links the CSVs. Compare titles, authors, dates, DOI and keywords with the visible PDF and Publinova record; record your decisions and any layout problems in the review sheet. Keep publication, event, online and PDF creation dates distinct.
+## Running the experiments
 
-## Common issues
+1. Put the notebooks in `notebooks/`. Required inputs are `output/inventory/documents.csv`, `output/preprocessing/sections.jsonl` and `output/preprocessing/section_languages.csv`. Generate these through the earlier inventory and preprocessing notebooks if needed.
+2. Use Python 3.12. For a baseline-only run, install `yake==0.4.8`, `pandas`, `matplotlib` and `ipykernel` in the selected notebook environment. Keep `RUN_GENERATOR = False`.
+3. Model runs require additional dependencies. The verified Ministral environment used CUDA-enabled PyTorch `2.14.1+cu126`, Transformers `5.22.1`, bitsandbytes `0.50.2`, `accelerate` and mistral-common `1.13.0`. Use this environment for Notebook 13; older install cells pinning Transformers below version 5 do not describe that tested setup.
+4. Start model diagnostics with `RUN_SCOPE = 'demo'`. Shut down other model kernels to release GPU memory. The first model run downloads weights; keep caches outside Git.
+5. Save the executed notebook and the exact folder printed beside `Current run:`. Preserve `output/keywords/sample_manifest.json` so document assignments remain fixed. Keep the test split untouched until settings are settled.
 
-- **Zero PDFs found:** check the printed `pdfs/` path and Jupyter working directory.
-- **Import error:** install the named package in the active kernel and run the notebook again.
-- **CSV cannot be saved:** close it in Excel and check write access to `output/inventory/`.
-- **`extractable` but poor text:** every page returned *some* text; tables, slides and columns can still have broken reading order.
-- **Wrong embedded title, author or keywords:** these are candidates, not verified facts. The initial sample included template titles, incomplete authors and meaningless Canva keywords.
+## Evidence and decisions
 
-On reruns, reviewed fields in `documents.csv` survive while the PDF bytes stay the same. Manually added observation/term rows survive only with `source_type=manual_review` or `publinova_record`; edits to automatically generated rows are overwritten. Keep the review sheet as the durable record.
+The saved evidence folders under `output/keywords/` use these descriptive names:
 
-## Run Notebook 05 — Section Segmentation and Language Preprocessing
-
-This notebook identifies document sections, detects Dutch and English text, and evaluates optional stop-word removal. Original extracted text is preserved for downstream EuroBERT embeddings.
-
-### Install dependencies
-
-Use the same Python environment as your Jupyter notebook. Install missing packages in the notebook kernel:
-
-```python
-%pip install pymupdf pandas numpy matplotlib fasttext spacy
-```
-
-Restart the kernel if prompted.
-
-### Download the fastText language model
-
-The notebook requires the pretrained `lid.176.bin` model, which is not included in the repository.
-
-From the project root, run:
-
-```bash
-mkdir -p models
-curl -L https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin -o models/lid.176.bin
-```
-
-The model is stored locally in `models/`, which is excluded from Git. spaCy's built-in English and Dutch stop-word lists are used; downloading additional spaCy language models is not necessary.
-
-### Run the notebook
-
-1. Ensure the PDFs are in `pdfs/` and Notebook 01 has generated `output/inventory/documents.csv`.
-2. Open `notebooks/05_segmentation_language_preprocessing.ipynb` in JupyterLab, with `notebooks/` as the working directory.
-3. Run the cells in order and inspect the segmentation, language detection, and validation results.
-
-### Generated outputs
-
-The notebook saves these files in `output/preprocessing/`:
-
-| Output | Description |
+| Folder | Original run ID |
 |---|---|
-| `pages.jsonl` | Page-level extracted text and document identifiers. |
-| `sections.jsonl` | Section blocks containing original text for downstream embeddings. |
-| `section_languages.csv` | Language detection results and section metadata. |
-| `sections_filtered_experimental.jsonl` | Optional stop-word-filtered representation alongside original text. |
+| `initial-six-paper-baseline` | `run_85995a125b6b` |
+| `six-paper-revised-input-run` | `run_213c7154fac9` | 
+| `initial-EuroLLM-output-format-failures` | `run_e26de998a8f4` |
+| `EuroLLM-numbered-output-experiment` | `run_30a9140d5881` |
+| `Ministral-comparison` | `run_02fe7887bd34` |
 
-Generated outputs and original PDFs remain local and are excluded from Git.
+Set `BASELINE_RUN_NAME = 'initial-six-paper-baseline'` in the notebooks when comparing against the renamed baseline folder. Fresh runs still write configuration-based `run_...` folders; renaming saved evidence does not change the recorded run configuration. The separate six-paper input-revision evidence is `run_213c7154fac9`; include it under that name if available.
 
-**Note:** Section identification is heuristic, and short or structured passages may have uncertain language predictions. Stop-word removal is experimental and should not replace original text for EuroBERT.
+Keep their configurations, source excerpts, suggestions, raw responses, audits, timings and review files. Notebook outputs can be inspected without rerunning the models.
+
+YAKE provided a fast baseline but returned fragments and document artefacts. Input cleaning reduced specific repetition and bibliography artefacts. EuroLLM still struggled with the requested output after a numbered-list revision. Ministral completed both examples normally, returning 20 English and 29 Dutch phrases. This supports further evaluation; it does not establish keyword accuracy or superiority over Harreman's work.
+
+## Next steps
+
+Review relevance, language and redundancy in `keyword_review.csv`, then compare quality at 10, 20 and 30 where enough suggestions exist. Fix the preparation/model configuration before held-out testing. Docker packaging and website integration remain separate implementation work.
+
+Do not commit model weights, caches, virtual environments or temporary debugging files.
