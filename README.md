@@ -52,6 +52,6 @@ YAKE provided a fast baseline but returned fragments and document artefacts. Inp
 
 ## Next steps
 
-Review relevance, language and redundancy in `keyword_review.csv`, then compare quality at 10, 20 and 30 where enough suggestions exist. Fix the preparation/model configuration before held-out testing. Docker packaging and website integration remain separate implementation work.
+Review relevance, language and redundancy in `keyword_review.csv`, then compare quality at 10, 20 and 30 where enough suggestions exist. Fix the preparation/model configuration before held-out testing.
 
 Do not commit model weights, caches, virtual environments or temporary debugging files.
