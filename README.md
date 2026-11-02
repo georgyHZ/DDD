@@ -1,3 +1,16 @@
+# WHAT TO DO
+
+##### Download notebooks 10, 11, 12, 13. Install dependencies when needed. Run all notebooks and fix all errors you come across (from missing libraries).
+
+
+
+
+
+
+
+
+
+
 # Keyword suggestion experiments
 
 These notebooks investigate up to 30 keyword/topic suggestions for English and Dutch research papers. Suggestions should match the paper's language and may express supported concepts using different wording.
