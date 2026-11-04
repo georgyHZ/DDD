@@ -12,3 +12,6 @@ models/
 
 # macOS metadata: system-generated files unrelated to the project.
 .DS_Store
+
+#virtual environment
+.venv/
