@@ -1,0 +1,21 @@
+{
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "method": "KeyBERT",
+  "languages": [
+    "en",
+    "nl"
+  ],
+  "preprocessing": "priority_based_with_pdf_cleaning",
+  "max_source_characters": 6000,
+  "ngram_range": [
+    1,
+    2
+  ],
+  "stopword_source": "spaCy",
+  "ranking": "MMR",
+  "diversity": 0.3,
+  "candidate_pool_size": 60,
+  "verified_author_keyword_suggestions": 5,
+  "extraction_unavailable_fallback_suggestions": 10,
+  "human_review_required": true
+}

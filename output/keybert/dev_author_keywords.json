@@ -1,0 +1,75 @@
+[
+  {
+    "document_id": "doc_5a6ef3b4929cdb64",
+    "file_name": "005_building-relationships-in-higher-education-to-support-students-motivation.pdf",
+    "language": "en",
+    "author_keywords": [
+      "Student-staff interactions",
+      "Need-supportive teaching",
+      "Relationship quality",
+      "Motivation",
+      "Self-determination theory"
+    ],
+    "author_keyword_status": "verified",
+    "author_keyword_count": 5,
+    "required_suggestions": 5,
+    "generation_mode": "additional_keywords"
+  },
+  {
+    "document_id": "doc_a31197553fa562f4",
+    "file_name": "072_overflow-tests-dutch-levees-annexes.pdf",
+    "language": "en",
+    "author_keywords": [],
+    "author_keyword_status": "extraction_unavailable",
+    "author_keyword_count": 0,
+    "required_suggestions": 10,
+    "generation_mode": "fallback_generation"
+  },
+  {
+    "document_id": "doc_1284c81a29b16bf1",
+    "file_name": "027_the-use-of-tetraselmis-chuii-as-seafood-flavoring-agent-in-a-vegetable-broth.pdf",
+    "language": "en",
+    "author_keywords": [
+      "Microalgae",
+      "Tetraselmis chuii",
+      "Seafood alternative",
+      "Sensory evaluation",
+      "Consumer acceptance",
+      "Umami"
+    ],
+    "author_keyword_status": "verified",
+    "author_keyword_count": 6,
+    "required_suggestions": 5,
+    "generation_mode": "additional_keywords"
+  },
+  {
+    "document_id": "doc_536f964e25d848c9",
+    "file_name": "062_leven-in-zeeland-2021.pdf",
+    "language": "nl",
+    "author_keywords": [],
+    "author_keyword_status": "extraction_unavailable",
+    "author_keyword_count": 0,
+    "required_suggestions": 10,
+    "generation_mode": "fallback_generation"
+  },
+  {
+    "document_id": "doc_c136a22677a363ed",
+    "file_name": "063_living-lab-sporten-in-de-wijk-gemeente-middelburg.pdf",
+    "language": "nl",
+    "author_keywords": [],
+    "author_keyword_status": "extraction_unavailable",
+    "author_keyword_count": 0,
+    "required_suggestions": 10,
+    "generation_mode": "fallback_generation"
+  },
+  {
+    "document_id": "doc_2aff122389509a84",
+    "file_name": "049_eindrapportage-vitaliteitsakkoord-gemeente-goes.pdf",
+    "language": "nl",
+    "author_keywords": [],
+    "author_keyword_status": "extraction_unavailable",
+    "author_keyword_count": 0,
+    "required_suggestions": 10,
+    "generation_mode": "fallback_generation"
+  }
+]
