@@ -1,13 +1,13 @@
 """Metadata API: read the collection database, extract new uploads.
 
-Read routes serve the SQLite file built by notebook 08 (output/api/metadata.db).
+Read routes serve the SQLite file built by notebook 15 (output/api/metadata.db).
 The API never writes to it: notebooks stay the only writer, so a rerun of
-notebook 08 atomically replaces the database and the API picks it up
+notebook 15 atomically replaces the database and the API picks it up
 on the next request.
 
 POST /v1/extract takes a new PDF, runs the extraction pipeline (api/extraction,
 Ministral 3B on a CUDA GPU) and returns a record in the same `Document` shape,
-graded with the same notebook 08 rules (api/consolidate.py), plus generated
+graded with the same notebook 15 rules (api/consolidate.py), plus generated
 `suggested_keywords`. The result is returned only, not stored.
 
 Run from the project root:
@@ -108,7 +108,7 @@ class CountItem(BaseModel):
 # ------------------------------------------------------------------- db
 def get_db() -> Iterator[sqlite3.Connection]:
     if not DB_PATH.is_file():
-        raise HTTPException(503, "Metadata database not built yet. Run notebook 08.")
+        raise HTTPException(503, "Metadata database not built yet. Run notebook 15.")
     con = sqlite3.connect(f"{DB_PATH.as_uri()}?mode=ro", uri=True,
                           check_same_thread=False)
     con.row_factory = sqlite3.Row

@@ -6,7 +6,7 @@ Steps
 2. DOI, document type                 rule-based harvester (doi_rules.py)
 3. keyword suggestions                notebook 13: input_v2 excerpt + Ministral numbered topics (llm.py)
 4. title / authors / year             Ministral JSON prompt (llm.py), then
-5. provenance, confidence, flags      notebook 08 consolidation rules (../consolidate.py)
+5. provenance, confidence, flags      notebook 15 consolidation rules (../consolidate.py)
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def document_id_for(pdf_bytes: bytes) -> tuple[str, str]:
 
 
 def _language_share(sections) -> dict | None:
-    """fastText shares with the filter notebook 08 uses: en/nl, score >= 0.80, >= 100 characters."""
+    """fastText shares with the filter notebook 15 uses: en/nl, score >= 0.80, >= 100 characters."""
     totals = {"en": 0, "nl": 0}
     for s in sections:
         if s.detected_language in totals and s.language_score >= 0.80 and s.chars >= 100:
@@ -125,7 +125,7 @@ def analyse(pdf_bytes: bytes, file_name: str, model: MinistralModel, detector: L
         organisations = consolidate.norm_list(llm_fields.get("organisations"))[:10]
         timings["metadata_model"] = round(time.perf_counter() - t, 2)
 
-    # 5. consolidation: notebook 08 rules ----------------------------------------------------------
+    # 5. consolidation: notebook 15 rules ----------------------------------------------------------
     # NFKC turns PDF ligatures (ﬁ, ﬂ) into plain letters so returned values are clean text.
     grading_pages = [unicodedata.normalize("NFKC", p) for p in pages]
     fields, flags, rejected = consolidate.resolve(

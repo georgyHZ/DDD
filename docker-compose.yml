@@ -8,7 +8,7 @@ services:
     volumes:
       # lid.176.bin and Ministral-3-3B-Instruct-2512-BF16/ (gitignored). Override in .env if they live elsewhere.
       - ${MODELS_DIR:-./models}:/models:ro
-      # metadata.db built by notebook 08 (gitignored). Without it the /v1 read routes return 503.
+      # metadata.db built by notebook 15 (gitignored). Without it the /v1 read routes return 503.
       - ${API_DATA_DIR:-./output/api}:/data/api:ro
       # Used only if the local model folder is missing: weights are then downloaded once into this volume.
       - hf-cache:/cache/huggingface

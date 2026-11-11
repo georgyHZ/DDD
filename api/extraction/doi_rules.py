@@ -1,4 +1,4 @@
-"""Rule-based DOI, document type and author keywords, ported from notebook 08.
+"""Rule-based DOI, document type and author keywords, ported from notebook 08_doi_and_type_extraction.
 
 A DOI is an exact string, so it is harvested from metadata, links and page zones and
 scored (own DOI vs cited DOI) instead of asking the language model for it.

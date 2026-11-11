@@ -1,4 +1,4 @@
-"""Field consolidation and confidence rules from notebook 08 (consolidate_and_build_database).
+"""Field consolidation and confidence rules from notebook 15 (consolidate_and_build_database).
 
 Moved out of the notebook so the API's upload route (`POST /v1/extract`) grades a freshly
 uploaded PDF with exactly the same rules as the documents in `metadata.db`:
@@ -9,7 +9,7 @@ uploaded PDF with exactly the same rules as the documents in `metadata.db`:
 
 Changes compared with the notebook (marked "API addition" below):
 * `resolve()` takes its inputs as arguments instead of reading the notebook's global tables.
-* Optional `rule_doi`: the scored DOI from the rule-based harvester (notebook 08 on main,
+* Optional `rule_doi`: the scored DOI from the rule-based harvester (notebook 08_doi_and_type_extraction,
   DOI/type extraction). It is used after an LLM DOI and before the plain page-text regex, which
   can pick up a cited DOI. Source `rules`.
 * Optional `rule_type`: the cue-based document type from the same notebook, used when the LLM

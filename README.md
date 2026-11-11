@@ -96,8 +96,8 @@ One FastAPI service (`api/`) with two halves that share the same record format (
 
 | Route | What it does | Built by |
 |---|---|---|
-| `GET /v1/documents`, `/v1/documents/{id}`, `/v1/documents/by-doi/{doi}`, `/v1/authors`, `/v1/keywords`, `/v1/stats` | Read the collection database `output/api/metadata.db` (built by notebook 08). | Georgy |
-| `POST /v1/extract` | Upload a new PDF; get the same `Document` fields back, graded with the **same notebook 08 rules** (`api/consolidate.py`), plus `suggested_keywords` from Ministral 3 3B. Nothing is stored. | Marto |
+| `GET /v1/documents`, `/v1/documents/{id}`, `/v1/documents/by-doi/{doi}`, `/v1/authors`, `/v1/keywords`, `/v1/stats` | Read the collection database `output/api/metadata.db` (built by notebook 15). | Georgy |
+| `POST /v1/extract` | Upload a new PDF; get the same `Document` fields back, graded with the **same notebook 15 rules** (`api/consolidate.py`), plus `suggested_keywords` from Ministral 3 3B. Nothing is stored. | Marto |
 | `GET /` | Browser upload page; shows the `/v1/extract` result JSON. | Marto |
 | `GET /health`, `/docs` | Status of the database and the extraction model; interactive API docs. | both |
 
@@ -107,20 +107,20 @@ How `/v1/extract` builds a record:
 2. Rule-based DOI and document type (DOI/type notebook on main) - `api/extraction/doi_rules.py`
 3. Keyword suggestions: `input_v2` excerpt + numbered-topics prompt on Ministral 3 3B, NF4 4-bit (notebook 13) - `api/extraction/source_prep.py`, `llm.py`
 4. Title, authors, year: Ministral JSON prompt (adapted from notebook 07) - `llm.py`
-5. `provenance` / `confidence` / `review_flags`: notebook 08's `resolve()` - `api/consolidate.py`.
+5. `provenance` / `confidence` / `review_flags`: notebook 15's `resolve()` - `api/consolidate.py`.
    Two additions there: a scored rule-based DOI (source `rules`) is preferred over the plain page-text
    regex, and the rule-based document type (source `rules`) is used when the LLM gives none.
 
 `document_id` is `doc_` + the first 16 hex characters of the file's SHA-256, the same ID as the inventory,
 so `known_in_database` tells whether the upload is already in `metadata.db`.
-`keywords` keeps notebook 08's meaning (keywords printed or embedded by the authors);
+`keywords` keeps notebook 15's meaning (keywords printed or embedded by the authors);
 the generated suggestions for the website are in `suggested_keywords`.
 
 ### Run
 
 Needs Docker Desktop with an NVIDIA GPU (6 GB+), `models/lid.176.bin` and
 `models/Ministral-3-3B-Instruct-2512-BF16/` (both gitignored; without the local Ministral folder the
-weights are downloaded once from Hugging Face). Build `output/api/metadata.db` with notebook 08 for the read routes.
+weights are downloaded once from Hugging Face). Build `output/api/metadata.db` with notebook 15 for the read routes.
 
 ```bash
 docker compose up -d --build
@@ -131,7 +131,7 @@ If the models or the database live elsewhere, put the paths in a `.env` file nex
 (gitignored), e.g. `MODELS_DIR=C:/path/to/models` and `API_DATA_DIR=C:/path/to/output/api`.
 The model loads in about a minute; `/health` shows `"extraction": {"status": "ready"}`.
 
-Without a GPU, the read routes still work locally: `EXTRACTION_ENABLED=0 uvicorn api.main:app` (notebook 09).
+Without a GPU, the read routes still work locally: `EXTRACTION_ENABLED=0 uvicorn api.main:app` (notebook 16).
 
 ### Test
 
