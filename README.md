@@ -89,3 +89,56 @@ The notebook saves these files in `output/preprocessing/`:
 Generated outputs and original PDFs remain local and are excluded from Git.
 
 **Note:** Section identification is heuristic, and short or structured passages may have uncertain language predictions. Stop-word removal is experimental and should not replace original text for EuroBERT.
+
+## Metadata API (Docker)
+
+One FastAPI service (`api/`) with two halves that share the same record format (`Document`):
+
+| Route | What it does | Built by |
+|---|---|---|
+| `GET /v1/documents`, `/v1/documents/{id}`, `/v1/documents/by-doi/{doi}`, `/v1/authors`, `/v1/keywords`, `/v1/stats` | Read the collection database `output/api/metadata.db` (built by notebook 08). | Georgy |
+| `POST /v1/extract` | Upload a new PDF; get the same `Document` fields back, graded with the **same notebook 08 rules** (`api/consolidate.py`), plus `suggested_keywords` from Ministral 3 3B. Nothing is stored. | Marto |
+| `GET /` | Browser upload page; shows the `/v1/extract` result JSON. | Marto |
+| `GET /health`, `/docs` | Status of the database and the extraction model; interactive API docs. | both |
+
+How `/v1/extract` builds a record:
+
+1. Text, sections and fastText language (notebook 05) - `api/extraction/pdf_text.py`
+2. Rule-based DOI and document type (DOI/type notebook on main) - `api/extraction/doi_rules.py`
+3. Keyword suggestions: `input_v2` excerpt + numbered-topics prompt on Ministral 3 3B, NF4 4-bit (notebook 13) - `api/extraction/source_prep.py`, `llm.py`
+4. Title, authors, year: Ministral JSON prompt (adapted from notebook 07) - `llm.py`
+5. `provenance` / `confidence` / `review_flags`: notebook 08's `resolve()` - `api/consolidate.py`.
+   Two additions there: a scored rule-based DOI (source `rules`) is preferred over the plain page-text
+   regex, and the rule-based document type (source `rules`) is used when the LLM gives none.
+
+`document_id` is `doc_` + the first 16 hex characters of the file's SHA-256, the same ID as the inventory,
+so `known_in_database` tells whether the upload is already in `metadata.db`.
+`keywords` keeps notebook 08's meaning (keywords printed or embedded by the authors);
+the generated suggestions for the website are in `suggested_keywords`.
+
+### Run
+
+Needs Docker Desktop with an NVIDIA GPU (6 GB+), `models/lid.176.bin` and
+`models/Ministral-3-3B-Instruct-2512-BF16/` (both gitignored; without the local Ministral folder the
+weights are downloaded once from Hugging Face). Build `output/api/metadata.db` with notebook 08 for the read routes.
+
+```bash
+docker compose up -d --build
+docker compose logs -f
+```
+
+If the models or the database live elsewhere, put the paths in a `.env` file next to `docker-compose.yml`
+(gitignored), e.g. `MODELS_DIR=C:/path/to/models` and `API_DATA_DIR=C:/path/to/output/api`.
+The model loads in about a minute; `/health` shows `"extraction": {"status": "ready"}`.
+
+Without a GPU, the read routes still work locally: `EXTRACTION_ENABLED=0 uvicorn api.main:app` (notebook 09).
+
+### Test
+
+* Browser: <http://localhost:8000>, choose a PDF, *Extract keywords* (20-70 s).
+* Command line: `curl.exe -F "file=@pdfs/005_building-relationships-in-higher-education-to-support-students-motivation.pdf" http://localhost:8000/v1/extract`
+* Read routes: `curl.exe "http://localhost:8000/v1/documents?q=flood&limit=5"`, `curl.exe http://localhost:8000/v1/stats`
+* Errors: 400 not a PDF, 413 too large, 422 no extractable text (scanned; no OCR), 503 model loading.
+
+With `METADATA_API_KEY` set, every `/v1` call needs the `X-API-Key` header; set `DEMO_PAGES=0` as well,
+because the browser page does not send a key.

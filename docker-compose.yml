@@ -1,0 +1,30 @@
+services:
+  metadata-api:
+    build: .
+    image: ddd-metadata-api:latest
+    container_name: ddd-metadata-api
+    ports:
+      - "127.0.0.1:8000:8000"   # only reachable from this machine; drop "127.0.0.1:" to expose it
+    volumes:
+      # lid.176.bin and Ministral-3-3B-Instruct-2512-BF16/ (gitignored). Override in .env if they live elsewhere.
+      - ${MODELS_DIR:-./models}:/models:ro
+      # metadata.db built by notebook 08 (gitignored). Without it the /v1 read routes return 503.
+      - ${API_DATA_DIR:-./output/api}:/data/api:ro
+      # Used only if the local model folder is missing: weights are then downloaded once into this volume.
+      - hf-cache:/cache/huggingface
+    environment:
+      EXTRACTION_ENABLED: "1"
+      MAX_UPLOAD_MB: "100"
+      # METADATA_API_KEY: "change-me"            # then every /v1 call needs header X-API-Key (set DEMO_PAGES: "0" too)
+      # CORS_ORIGINS: "https://example.hz.nl"    # when a website calls the API from the browser
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  hf-cache:

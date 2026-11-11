@@ -1,29 +1,46 @@
-"""Read-only metadata API.
+"""Metadata API: read the collection database, extract new uploads.
 
-Serves the SQLite file built by notebook 08 (output/api/metadata.db).
-The API never writes: notebooks stay the only writer, so a rerun of
+Read routes serve the SQLite file built by notebook 08 (output/api/metadata.db).
+The API never writes to it: notebooks stay the only writer, so a rerun of
 notebook 08 atomically replaces the database and the API picks it up
 on the next request.
 
+POST /v1/extract takes a new PDF, runs the extraction pipeline (api/extraction,
+Ministral 3B on a CUDA GPU) and returns a record in the same `Document` shape,
+graded with the same notebook 08 rules (api/consolidate.py), plus generated
+`suggested_keywords`. The result is returned only, not stored.
+
 Run from the project root:
-    uvicorn api.main:app --reload
+    uvicorn api.main:app --reload            (read routes only: EXTRACTION_ENABLED=0)
+    docker compose up -d --build             (everything, with GPU)
 
 Environment variables (all optional):
     METADATA_DB        path to the SQLite file
     METADATA_API_KEY   if set, every /v1 request needs header X-API-Key
     CORS_ORIGINS       comma-separated list of allowed browser origins
+    EXTRACTION_ENABLED 1 = load the model and enable /v1/extract (default 0 outside Docker)
+    MODEL_DIR          local Ministral folder (else downloaded from Hugging Face)
+    LID_MODEL          path to fastText lid.176.bin
+    MAX_UPLOAD_MB      upload limit for /v1/extract (default 100)
+    DEMO_PAGES         1 = serve the browser upload page at / (default 1)
 """
 from __future__ import annotations
 
+import html
 import json
+import logging
 import os
 import secrets
 import sqlite3
+import threading
+import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Iterator, Literal, Optional
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Security
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Security, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
@@ -66,6 +83,14 @@ class Document(BaseModel):
     review_flags: list[str] = []
     provenance: dict[str, FieldProvenance]
     extraction: Extraction
+
+
+class ExtractResult(Document):
+    """A freshly extracted upload: the database fields plus what only the extraction produces."""
+    suggested_keywords: list[str] = []
+    organisations: list[str] = []
+    known_in_database: bool = False
+    processing: dict = {}
 
 
 class DocumentPage(BaseModel):
@@ -150,31 +175,118 @@ SORTS = {
     "-year": "publication_year IS NULL, publication_year DESC",
 }
 
+# ------------------------------------------------------------ extraction
+log = logging.getLogger("metadata-api")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+EXTRACTION_ENABLED = os.environ.get("EXTRACTION_ENABLED", "0") == "1"
+DEMO_PAGES = os.environ.get("DEMO_PAGES", "1") == "1"
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "100"))
+
+
+class Extractor:
+    """Holds the models; loaded once in a background thread so the read routes start at once."""
+    status = "disabled"            # disabled | loading | ready | error
+    error: Optional[str] = None
+    model = None
+    detector = None
+
+
+def _load_extractor() -> None:
+    try:
+        from .extraction.llm import MinistralModel
+        from .extraction.pdf_text import LanguageDetector
+        lid = os.environ.get("LID_MODEL", "/models/lid.176.bin")
+        log.info("Loading fastText language model from %s", lid)
+        Extractor.detector = LanguageDetector(lid)
+        Extractor.model = MinistralModel(os.environ.get("MODEL_DIR", "/models/Ministral-3-3B-Instruct-2512-BF16"))
+        log.info("Loading Ministral (4-bit)")
+        Extractor.model.load()
+        Extractor.status = "ready"
+        log.info("Extraction ready on %s after %ss (%s)", Extractor.model.device,
+                 Extractor.model.load_seconds, Extractor.model.source)
+    except Exception as exc:  # noqa: BLE001 - surface any load failure on /health
+        Extractor.status, Extractor.error = "error", f"{type(exc).__name__}: {exc}"
+        log.error("Extraction model failed to load:\n%s", traceback.format_exc())
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if EXTRACTION_ENABLED:
+        Extractor.status = "loading"
+        threading.Thread(target=_load_extractor, daemon=True).start()
+    yield
+
+
+def known_in_database(document_id: str) -> bool:
+    if not DB_PATH.is_file():
+        return False
+    with sqlite3.connect(f"{DB_PATH.as_uri()}?mode=ro", uri=True) as con:
+        return con.execute("SELECT 1 FROM documents WHERE document_id = ?", (document_id,)).fetchone() is not None
+
+
+def run_extraction(file: UploadFile) -> ExtractResult:
+    if Extractor.status == "disabled":
+        raise HTTPException(503, "Extraction is disabled on this server (EXTRACTION_ENABLED=0).")
+    if Extractor.status == "loading":
+        raise HTTPException(503, "The extraction model is still loading. Try again in a minute (see /health).")
+    if Extractor.status == "error":
+        raise HTTPException(503, f"The extraction model failed to load: {Extractor.error}")
+    data = file.file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
+    if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(413, f"The file is larger than {MAX_UPLOAD_MB} MB.")
+    if not data:
+        raise HTTPException(400, "The uploaded file is empty.")
+    if b"%PDF-" not in data[:1024]:
+        raise HTTPException(400, "The uploaded file is not a PDF.")
+    from .extraction.pipeline import PipelineError, analyse
+    name = os.path.basename(file.filename or "upload.pdf")
+    log.info("Extracting %s (%.1f MB)", name, len(data) / 1e6)
+    try:
+        result = analyse(data, name, Extractor.model, Extractor.detector)
+    except PipelineError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    result["known_in_database"] = known_in_database(result["document_id"])
+    log.info("Done %s: %d suggested keywords in %ss", name, len(result["suggested_keywords"]),
+             result["processing"]["timing_seconds"]["total"])
+    return ExtractResult(**result)
+
+
 # ------------------------------------------------------------------ app
 app = FastAPI(
     title="Publication metadata API",
-    version="1.0.0",
+    version="1.1.0",
     description=("Bibliographic metadata extracted from the PDF collection with an "
                  "LLM, checked against the page text. Every field carries its "
-                 "`source` and `confidence` under `provenance`."),
+                 "`source` and `confidence` under `provenance`. `POST /v1/extract` "
+                 "processes a new PDF the same way and adds generated `suggested_keywords`."),
+    lifespan=lifespan,
 )
 if os.environ.get("CORS_ORIGINS"):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[o.strip() for o in os.environ["CORS_ORIGINS"].split(",")],
-        allow_methods=["GET"], allow_headers=["X-API-Key"])
+        allow_methods=["GET", "POST"], allow_headers=["X-API-Key"])
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(require_key)])
 
 
 @app.get("/health", tags=["meta"])
 def health() -> dict:
+    extraction = {"status": Extractor.status, "error": Extractor.error,
+                  "gpu": getattr(Extractor.model, "device", None),
+                  "model_source": getattr(Extractor.model, "source", None)}
     if not DB_PATH.is_file():
-        return {"status": "no_database"}
+        return {"status": "no_database", "extraction": extraction}
     with sqlite3.connect(f"{DB_PATH.as_uri()}?mode=ro", uri=True) as con:
         n = con.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
         built = con.execute("SELECT value FROM meta WHERE key='built_at'").fetchone()
-    return {"status": "ok", "documents": n, "built_at": built[0] if built else None}
+    return {"status": "ok", "documents": n, "built_at": built[0] if built else None, "extraction": extraction}
+
+
+@router.post("/extract", response_model=ExtractResult, tags=["extraction"])
+def extract(file: UploadFile = File(..., description="A PDF publication (English or Dutch)")) -> ExtractResult:
+    """Extract metadata and keyword suggestions from an uploaded PDF. Nothing is stored."""
+    return run_extraction(file)
 
 
 @router.get("/documents", response_model=DocumentPage, tags=["documents"])
@@ -300,3 +412,55 @@ def stats(db: sqlite3.Connection = Depends(get_db)) -> dict:
 
 
 app.include_router(router)
+
+
+# ---------------------------------------------------------- browser demo pages
+PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>{refresh}
+<style>
+ body {{ font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1d1d1f; }}
+ pre {{ background: #f4f4f6; padding: 1rem; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }}
+ .muted {{ color: #666; }} .err {{ color: #b00020; }}
+ button {{ padding: .5rem 1.2rem; font-size: 1rem; }}
+</style></head><body>{body}</body></html>"""
+
+
+def _page(title: str, body: str, refresh: bool = False, status: int = 200) -> HTMLResponse:
+    meta = '<meta http-equiv="refresh" content="10">' if refresh else ""
+    return HTMLResponse(PAGE.format(title=html.escape(title), refresh=meta, body=body), status_code=status)
+
+
+if DEMO_PAGES:
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    def index() -> HTMLResponse:
+        state = {
+            "ready": f'<p class="muted">Model ready on {html.escape(getattr(Extractor.model, "device", None) or "GPU")}.</p>',
+            "loading": '<p class="muted">The model is loading (about a minute after start). This page refreshes itself.</p>',
+            "error": f'<p class="err">The model failed to load: {html.escape(Extractor.error or "")}</p>',
+            "disabled": '<p class="err">Extraction is disabled on this server (EXTRACTION_ENABLED=0).</p>',
+        }[Extractor.status]
+        body = f"""<h1>Keyword extraction</h1>
+<p>Upload a research publication (PDF, English or Dutch). Processing takes roughly 20&ndash;70 seconds.</p>
+{state}
+<form action="/extract" method="post" enctype="multipart/form-data"
+      onsubmit="this.querySelector('button').disabled=true;document.getElementById('wait').hidden=false;">
+  <p><input type="file" name="file" accept="application/pdf,.pdf" required></p>
+  <p><button type="submit" {'disabled' if Extractor.status != 'ready' else ''}>Extract keywords</button></p>
+  <p id="wait" class="muted" hidden>Processing&hellip; keep this tab open.</p>
+</form>
+<p class="muted">API: <code>POST /v1/extract</code> (form field <code>file</code>) &middot;
+<code>GET /v1/documents</code> &middot; <a href="/docs">/docs</a> &middot; <a href="/health">/health</a></p>"""
+        return _page("Keyword extraction", body, refresh=Extractor.status == "loading")
+
+    @app.post("/extract", response_class=HTMLResponse, include_in_schema=False)
+    def extract_page(file: UploadFile = File(...)) -> HTMLResponse:
+        try:
+            result = run_extraction(file)
+        except HTTPException as exc:
+            body = (f'<h1>Could not process the file</h1><p class="err">{html.escape(str(exc.detail))}</p>'
+                    '<p><a href="/">Upload another PDF</a></p>')
+            return _page("Error", body, status=exc.status_code)
+        pretty = html.escape(json.dumps(result.model_dump(), indent=2, ensure_ascii=False))
+        body = f'<h1>Result</h1><p><a href="/">Upload another PDF</a></p><pre>{pretty}</pre>'
+        return _page(f"Result - {result.file_name}", body)

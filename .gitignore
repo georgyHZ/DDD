@@ -15,3 +15,10 @@ models/
 
 #virtual environment
 .venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Local docker compose settings (machine-specific paths)
+.env
