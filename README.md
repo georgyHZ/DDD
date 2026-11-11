@@ -90,6 +90,55 @@ Generated outputs and original PDFs remain local and are excluded from Git.
 
 **Note:** Section identification is heuristic, and short or structured passages may have uncertain language predictions. Stop-word removal is experimental and should not replace original text for EuroBERT.
 
+## Keyword suggestion experiments (notebooks 10–14)
+
+These notebooks investigate up to 30 keyword/topic suggestions for English and Dutch research papers. Suggestions should match the paper's language and may express supported concepts using different wording.
+
+### Notebook order
+
+| Notebook | Purpose |
+|---|---|
+| `10_keyword_topic_suggestions_yake_baseline.ipynb` | Initial YAKE baseline on six development papers. |
+| `11_keyword_topic_suggestions_input_revision.ipynb` | Revised cleaning and source selection; initial EuroLLM checks. |
+| `12_keyword_topic_suggestions_eurollm_numbered_output.ipynb` | Simpler output format and parsing diagnostics for EuroLLM. |
+| `13_keyword_topic_suggestions_ministral3_comparison.ipynb` | Ministral 3 3B in 4-bit precision on the same two development excerpts. |
+| `14_keybert_multilingual_keyword_extraction.ipynb` | Multilingual KeyBERT baseline (`paraphrase-multilingual-MiniLM-L12-v2`) with author-keyword handling, on the same development and test split. |
+
+Background and decisions are summarised in `docs/about-this-branch.md`.
+
+### Running notebooks 10–13
+
+1. Required inputs are `output/inventory/documents.csv`, `output/preprocessing/sections.jsonl` and `output/preprocessing/section_languages.csv`. Generate these with notebooks 01 and 05 if needed.
+2. Use Python 3.12. For a baseline-only run, install `yake==0.4.8`, `pandas`, `matplotlib` and `ipykernel` in the selected notebook environment. Keep `RUN_GENERATOR = False`.
+3. Model runs require additional dependencies. The verified Ministral environment used CUDA-enabled PyTorch `2.14.1+cu126`, Transformers `5.22.1`, bitsandbytes `0.50.2`, `accelerate` and mistral-common `1.13.0`. Use this environment for notebook 13; older install cells pinning Transformers below version 5 do not describe that tested setup.
+4. Start model diagnostics with `RUN_SCOPE = 'demo'`. Shut down other model kernels to release GPU memory. The first model run downloads weights; keep caches outside Git.
+5. Save the executed notebook and the exact folder printed beside `Current run:`. Preserve `output/keywords/sample_manifest.json` so document assignments remain fixed. Keep the test split untouched until settings are settled.
+
+### Running notebook 14 (KeyBERT)
+
+1. Uses the same preprocessing outputs as notebooks 10–13 and the shared `sample_manifest.json` in the project root (identical to `output/keywords/sample_manifest.json`).
+2. Install `keybert`, `sentence-transformers` and `spacy` in the notebook kernel. The model downloads once and runs locally.
+3. Results are written to `output/keybert/`: candidates, suggestions and selection summaries for the development and test documents, plus `keybert_config.json`.
+4. Business rule used: documents with verified author keywords get five additional suggestions; when author keywords cannot be extracted, ten fallback suggestions are generated with the status `extraction_unavailable`. Author keywords and suggestions are kept in separate fields.
+
+### Evidence and decisions
+
+The saved evidence folders under `output/keywords/` use these descriptive names (*can be found in the Teams channel -> Shared -> 09_ARCHIVE -> MODEL TESTING RESULTS*):
+
+| Folder | Original run ID |
+|---|---|
+| `initial-six-paper-baseline` | `run_85995a125b6b` |
+| `six-paper-revised-input-run` | `run_213c7154fac9` |
+| `initial-EuroLLM-output-format-failures` | `run_e26de998a8f4` |
+| `EuroLLM-numbered-output-experiment` | `run_30a9140d5881` |
+| `Ministral-comparison` | `run_02fe7887bd34` |
+
+Set `BASELINE_RUN_NAME = 'initial-six-paper-baseline'` in the notebooks when comparing against the renamed baseline folder. Fresh runs still write configuration-based `run_...` folders; renaming saved evidence does not change the recorded run configuration.
+
+Keep their configurations, source excerpts, suggestions, raw responses, audits, timings and review files. Notebook outputs can be inspected without rerunning the models.
+
+YAKE provided a fast baseline but returned fragments and document artefacts. Input cleaning reduced specific repetition and bibliography artefacts. EuroLLM still struggled with the requested output after a numbered-list revision. Ministral completed both examples normally, returning 20 English and 29 Dutch phrases. KeyBERT returns one- and two-word phrases taken from the text; some are word-order variants or fragments. None of these results establishes keyword accuracy or superiority over Harreman's work; human relevance review is still required.
+
 ## Metadata API (Docker)
 
 One FastAPI service (`api/`) with two halves that share the same record format (`Document`):
