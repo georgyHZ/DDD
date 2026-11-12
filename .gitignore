@@ -12,3 +12,13 @@ models/
 
 # macOS metadata: system-generated files unrelated to the project.
 .DS_Store
+
+#virtual environment
+.venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Local docker compose settings (machine-specific paths)
+.env
